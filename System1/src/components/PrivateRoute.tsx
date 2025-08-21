@@ -1,38 +1,36 @@
 import React, { type JSX } from 'react';
 import { hasAuthParams, useAuth } from 'react-oidc-context';
 import LoadingPage from '../pages/LoadingPage';
+import LoginContainer from './LoginContainer';
 
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
   const auth = useAuth();
 
-  const [hasTriedSignin, setHasTriedSignin] = React.useState(false);
-
-  React.useEffect(() => {
+  const handleSignIn = React.useCallback(() => {
     if (
       !(
         hasAuthParams() ||
         auth.isAuthenticated ||
         auth.activeNavigator ||
-        auth.isLoading ||
-        hasTriedSignin
+        auth.isLoading
       )
     ) {
       try {
         console.log('Redirecting to signin...');
         void auth.signinRedirect();
-        setHasTriedSignin(true);
-        console.log('Success...');
       } catch (error) {
         console.log('Error during signin redirect:', error);
       }
     }
-  }, [auth, hasTriedSignin]);
+  }, [auth]);
 
   return auth.isLoading ? (
     <LoadingPage />
   ) : auth.isAuthenticated ? (
     children
-  ) : null;
+  ) : (
+    <LoginContainer handleLogin={handleSignIn} />
+  );
 };
 
 export default PrivateRoute;

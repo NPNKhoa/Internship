@@ -10,6 +10,8 @@ const PrivatePage = () => {
     void auth.removeUser();
   }, [auth]);
 
+  console.log(auth);
+
   return (
     <div>
       <Header />

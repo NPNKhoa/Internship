@@ -1,0 +1,92 @@
+# This docker-compose file is currently set for development purposes only.
+# It is not recommended to use this configuration in production environments.
+
+name: sso-dev-environment
+services:
+  postgres:
+    image: postgres:17
+    container_name: ${POSTGRES_HOST}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432' # This port is used by Keycloak to connect to PostgreSQL. Can replace with any other port if needed.
+    networks:
+      - sso-networks
+
+  keycloak:
+    image: keycloak/keycloak:26.2.4
+    container_name: ${KEYCLOAK_HOST}
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres # Recommend to use PostgreSQL
+      KC_DB_URL_HOST: ${POSTGRES_HOST}
+      KC_DB_URL_PORT: 5432 # Same with the above port in postgres service
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_DB_DATABASE: ${POSTGRES_DB}
+    command: start-dev
+    ports:
+      - '8080:8080' # This port is used to access Keycloak. Can replace with any other port if needed.
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    depends_on:
+      - postgres
+    networks:
+      - sso-networks
+
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: ${LDAP_HOST}
+    environment:
+      LDAP_ORGANISATION: ${LDAP_ORGANISATION}
+      LDAP_DOMAIN: ${LDAP_DOMAIN}
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD}
+      LDAP_CONFIG_PASSWORD: ${LDAP_CONFIG_PASSWORD}
+      LDAP_READONLY_USER: 'false'
+      LDAP_RFC2307BIS_SCHEMA: 'false'
+      LDAP_BACKEND: 'mdb'
+      LDAP_TLS: 'false' # Only for development environment
+      LDAP_TLS_CRT_FILENAME: ''
+      LDAP_TLS_KEY_FILENAME: ''
+      LDAP_TLS_DH_PARAM_FILENAME: ''
+      LDAP_TLS_CA_CRT_FILENAME: ''
+      LDAP_TLS_ENFORCE: 'false'
+      LDAP_TLS_CIPHER_SUITE: ''
+      LDAP_TLS_VERIFY_CLIENT: ''
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    ports:
+      - '389:389'
+      - '636:636'
+    networks:
+      - sso-networks
+
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: phpldapadmin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: ${LDAP_HOST}
+      PHPLDAPADMIN_HTTPS: 'false' # Only for development environment
+      APACHE_SERVER_NAME: 'phpldapadmin.local'
+    ports:
+      - '8081:80'
+    depends_on:
+      - openldap
+    networks:
+      - sso-networks
+
+networks:
+  sso-networks:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  keycloak_data:
+  ldap_data:
+  ldap_config:
